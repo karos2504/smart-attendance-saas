@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Console — SaaS Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Terminal animation */
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+        .cursor-blink { animation: blink 1s infinite; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeInUp 0.35s ease-out forwards; }
+        @keyframes pulse-ring { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+        @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 600px; } }
+        .slide-down { animation: slideDown 0.3s ease-out forwards; }
+        .stat-card { transition: all 0.2s ease; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.3); }
+
+        /* Terminal log styles */
+        .log-line { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+        .log-INFO { color: #34d399; }
+        .log-WARN { color: #fbbf24; }
+        .log-ERROR { color: #f87171; }
+        .log-DEBUG { color: #818cf8; }
+
+        /* Modal overlay */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s ease;
+        }
+        .modal-content {
+            animation: fadeInUp 0.25s ease-out;
+        }
+
+        /* Toast notification */
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .toast-in { animation: toastIn 0.3s ease-out forwards; }
+        .toast-out { animation: toastOut 0.3s ease-in forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen text-slate-200">
+
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center h-14">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-lg flex items-center justify-center text-white text-sm font-black shadow-lg shadow-violet-500/25">
+                    SA
+                </div>
+                <div>
+                    <h1 class="text-sm font-extrabold text-white tracking-wide">SUPER ADMIN CONSOLE</h1>
+                    <p class="text-[10px] text-slate-500 font-medium">SaaS Platform Management</p>
+                </div>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-violet-400 bg-violet-500/10">
+                    📊 Dashboard
+                </button>
+                <button onclick="switchTab('tenants')" id="nav-tenants" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                    🏢 Tenants
+                </button>
+                <button onclick="switchTab('infra')" id="nav-infra" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                    ☁️ Infrastructure
+                </button>
+                <button onclick="switchTab('packages')" id="nav-packages" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                    📦 Gói cước
+                </button>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p class="text-xs font-bold text-slate-300" id="headerUser">Super Admin</p>
+                    <p class="text-[10px] text-slate-500">SYSTEM · Platform Level</p>
+                </div>
+                <button onclick="handleLogout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/20">
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile nav -->
+        <div class="md:hidden flex border-t border-slate-800 bg-slate-900/50">
+            <button onclick="switchTab('dashboard')" id="mob-dashboard" class="flex-1 py-2.5 text-[10px] font-bold text-violet-400 border-b-2 border-violet-500">Dashboard</button>
+            <button onclick="switchTab('tenants')" id="mob-tenants" class="flex-1 py-2.5 text-[10px] font-bold text-slate-500 border-b-2 border-transparent">Tenants</button>
+            <button onclick="switchTab('infra')" id="mob-infra" class="flex-1 py-2.5 text-[10px] font-bold text-slate-500 border-b-2 border-transparent">Infra</button>
+            <button onclick="switchTab('packages')" id="mob-packages" class="flex-1 py-2.5 text-[10px] font-bold text-slate-500 border-b-2 border-transparent">Gói cước</button>
+        </div>
+    </header>
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-[100] flex flex-col gap-2"></div>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- ══ TAB: DASHBOARD ══ -->
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <!-- KPI Cards Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="stat-card bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tenants</span>
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm">🏢</span>
+                    </div>
+                    <p class="text-2xl sm:text-3xl font-black text-white" id="kpiTenants">—</p>
+                    <p class="text-[10px] text-emerald-400 font-semibold mt-1">● Active</p>
+                </div>
+                <div class="stat-card bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Users</span>
+                        <span class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 text-sm">👥</span>
+                    </div>
+                    <p class="text-2xl sm:text-3xl font-black text-white" id="kpiUsers">—</p>
+                    <p class="text-[10px] text-slate-500 font-semibold mt-1">Tổng nhân viên</p>
+                </div>
+                <div class="stat-card bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">API Reqs</span>
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-sm">⚡</span>
+                    </div>
+                    <p class="text-2xl sm:text-3xl font-black text-white" id="kpiApi">—</p>
+                    <p class="text-[10px] text-slate-500 font-semibold mt-1">Hôm nay</p>
+                </div>
+                <div class="stat-card bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chi phí</span>
+                        <span class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-sm">💰</span>
+                    </div>
+                    <p class="text-2xl sm:text-3xl font-black text-white" id="kpiCost">—</p>
+                    <p class="text-[10px] text-slate-500 font-semibold mt-1">USD/tháng (ước tính)</p>
+                </div>
+            </div>
+
+            <!-- System Health + Quick Actions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <!-- System Status -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span class="relative w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+                            System Health
+                        </h3>
+                        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md font-bold" id="systemStatus">HEALTHY</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-[10px] text-slate-500 font-semibold">Region</p>
+                            <p class="text-xs text-white font-bold mt-1" id="metricRegion">—</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-[10px] text-slate-500 font-semibold">Lambda Avg</p>
+                            <p class="text-xs text-white font-bold mt-1"><span id="metricLambda">—</span> ms</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-[10px] text-slate-500 font-semibold">DynamoDB RCU</p>
+                            <p class="text-xs text-white font-bold mt-1" id="metricRCU">—</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-[10px] text-slate-500 font-semibold">Error Rate</p>
+                            <p class="text-xs text-white font-bold mt-1"><span id="metricError">—</span>%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <h3 class="text-sm font-bold text-white mb-4">⚡ Quick Actions</h3>
+                    <div class="space-y-2">
+                        <button onclick="openCreateTenantModal()" class="w-full text-left bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 text-violet-300 px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                            ➕ Tạo Tenant mới
+                        </button>
+                        <button onclick="switchTab('tenants')" class="w-full text-left bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-300 px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                            📋 Quản lý Doanh nghiệp
+                        </button>
+                        <button onclick="switchTab('infra')" class="w-full text-left bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-300 px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                            ☁️ Giám sát hạ tầng Cloud
+                        </button>
+                        <button onclick="loadMetrics()" class="w-full text-left bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-300 px-4 py-2.5 rounded-lg text-xs font-semibold transition">
+                            🔄 Refresh Metrics
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Tenants Preview -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-white">🏢 Tenants gần đây</h3>
+                    <button onclick="switchTab('tenants')" class="text-[10px] text-violet-400 hover:text-violet-300 font-semibold">Xem tất cả →</button>
+                </div>
+                <div id="dashboardTenantsPreview" class="overflow-x-auto">
+                    <p class="text-xs text-slate-500 italic py-4 text-center">Đang tải...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB: TENANTS MANAGEMENT ══ -->
+        <div id="tab-tenants" class="tab-content hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-black text-white">🏢 Quản lý Doanh Nghiệp</h2>
+                    <p class="text-xs text-slate-500">Tạo, khóa, gia hạn workspace của các công ty khách hàng</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="loadTenants()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-semibold transition border border-slate-700">
+                        🔄 Làm mới
+                    </button>
+                    <button onclick="openCreateTenantModal()" class="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-violet-600/25">
+                        ➕ Tạo Tenant mới
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 bg-slate-800/50">
+                                <th class="text-left px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Mã DN</th>
+                                <th class="text-left px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Tên Công Ty</th>
+                                <th class="text-left px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Gói cước</th>
+                                <th class="text-center px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                                <th class="text-center px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Users</th>
+                                <th class="text-center px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Ngày tạo</th>
+                                <th class="text-center px-4 py-3 font-bold text-slate-400 uppercase tracking-wider">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tenantsTableBody">
+                            <tr><td colspan="7" class="text-center py-8 text-slate-500 italic">Đang tải danh sách...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB: INFRASTRUCTURE MONITORING ══ -->
+        <div id="tab-infra" class="tab-content hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-black text-white">☁️ Giám sát Hạ tầng Cloud Serverless</h2>
+                    <p class="text-xs text-slate-500">AWS Lambda · API Gateway · DynamoDB · Realtime Logs</p>
+                </div>
+                <button onclick="loadMetrics()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-semibold transition border border-slate-700">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <!-- Infrastructure Metrics Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">System</p>
+                    <p class="text-lg font-black mt-1" id="infraStatus">—</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">Lambda Calls</p>
+                    <p class="text-lg font-black text-white mt-1" id="infraLambdaCalls">—</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">Lambda Avg</p>
+                    <p class="text-lg font-black text-white mt-1" id="infraLambdaAvg">—</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">DDB Read</p>
+                    <p class="text-lg font-black text-white mt-1" id="infraDDBRead">—</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">DDB Write</p>
+                    <p class="text-lg font-black text-white mt-1" id="infraDDBWrite">—</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">Error Rate</p>
+                    <p class="text-lg font-black mt-1" id="infraErrorRate">—</p>
+                </div>
+            </div>
+
+            <!-- CloudWatch-like Terminal -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="relative w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+                        <span class="text-[11px] font-bold text-slate-300">CloudWatch Event Stream — Live</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-500 font-mono" id="terminalRegion">ap-southeast-1</span>
+                        <button onclick="loadMetrics()" class="text-[10px] text-slate-500 hover:text-slate-300 transition">⟳</button>
+                    </div>
+                </div>
+                <div id="terminalBody" class="p-4 font-mono text-[11px] leading-relaxed max-h-[350px] overflow-y-auto space-y-1 bg-[#0c0f1a]">
+                    <p class="text-slate-600">Connecting to log stream...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB: PACKAGES CONFIGURATION ══ -->
+        <div id="tab-packages" class="tab-content hidden space-y-4">
+            <div>
+                <h2 class="text-lg font-black text-white">📦 Cấu hình Gói Cước SaaS</h2>
+                <p class="text-xs text-slate-500">Thiết lập hạn mức, giá cước cho từng gói dịch vụ</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- STARTER -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-600 to-slate-500"></div>
+                        <div class="text-center space-y-3 mb-6">
+                            <span class="text-2xl">🌱</span>
+                            <h3 class="text-base font-black text-white">STARTER</h3>
+                            <div>
+                                <span class="text-3xl font-black text-white">Free</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-2 text-xs text-slate-400 mb-6">
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Tối đa <span id="lbl-starter-max" class="font-bold text-white">50</span> nhân viên</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Chấm công định vị GPS</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Xuất báo cáo Excel</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Hỗ trợ email 24/7</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-3 bg-slate-800/50 rounded-lg p-3">
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Giá cước (VNĐ/tháng)</label>
+                            <input type="number" id="pkg-starter-price" value="0" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-400 focus:outline-none cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Max Users (Hạn mức)</label>
+                            <input type="number" id="pkg-starter-max" value="50" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRO -->
+                <div class="bg-slate-900 border-2 border-violet-500/50 rounded-xl p-6 relative overflow-hidden shadow-lg shadow-violet-500/5 flex flex-col justify-between">
+                    <div>
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-600 to-fuchsia-600"></div>
+                        <div class="absolute top-3 right-3">
+                            <span class="bg-violet-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Popular</span>
+                        </div>
+                        <div class="text-center space-y-3 mb-6">
+                            <span class="text-2xl">🚀</span>
+                            <h3 class="text-base font-black text-white">PRO</h3>
+                            <div>
+                                <span id="lbl-pro-price" class="text-3xl font-black text-white">299.000</span>
+                                <span class="text-xs text-slate-500"> VNĐ/tháng</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-2 text-xs text-slate-400 mb-6">
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Tối đa <span id="lbl-pro-max" class="font-bold text-white">300</span> nhân viên</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Chấm công GPS an ninh cao</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Báo cáo Excel nâng cao</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Quản trị nhân sự & Phân quyền</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Webhook & Realtime Alert</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Hỗ trợ ưu tiên 24/7</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-3 bg-slate-800/50 rounded-lg p-3">
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Giá cước (VNĐ/tháng)</label>
+                            <input type="number" id="pkg-pro-price" value="299000" class="w-full bg-slate-800 border border-violet-500/30 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Max Users (Hạn mức)</label>
+                            <input type="number" id="pkg-pro-max" value="300" class="w-full bg-slate-800 border border-violet-500/30 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENTERPRISE -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600"></div>
+                        <div class="text-center space-y-3 mb-6">
+                            <span class="text-2xl">🏢</span>
+                            <h3 class="text-base font-black text-white">ENTERPRISE</h3>
+                            <div>
+                                <span id="lbl-enterprise-price" class="text-3xl font-black text-white">500.000</span>
+                                <span class="text-xs text-slate-500"> VNĐ/tháng</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-2 text-xs text-slate-400 mb-6">
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Trên <span id="lbl-enterprise-max" class="font-bold text-white">300</span> nhân viên (Không giới hạn)</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Multi-tenant isolation</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> SSO / SAML / OIDC</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> API tùy chỉnh doanh nghiệp</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Cam kết SLA 99.9%</li>
+                            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span> Dedicated Support Manager</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-3 bg-slate-800/50 rounded-lg p-3">
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Giá cước (VNĐ/tháng)</label>
+                            <input type="number" id="pkg-enterprise-price" value="500000" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Max Users (Hạn mức)</label>
+                            <input type="number" id="pkg-enterprise-max" value="1000" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="savePackages()" class="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold transition shadow-lg shadow-violet-600/25">
+                    💾 Lưu cấu hình Gói cước
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══ CREATE TENANT MODAL ═══ -->
+    <div id="createTenantModal" class="fixed inset-0 z-[80] hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeCreateTenantModal()"></div>
+        <div class="modal-content relative max-w-lg w-full mx-auto mt-24 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 space-y-5">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-black text-white">➕ Khởi tạo Doanh Nghiệp Mới</h3>
+                <button onclick="closeCreateTenantModal()" class="text-slate-500 hover:text-slate-300 text-lg">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mã Doanh Nghiệp (Tenant ID) *</label>
+                    <input id="newTenantId" type="text" placeholder="VD: COMPANY_ABC" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500 transition">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tên Công Ty *</label>
+                    <input id="newTenantName" type="text" placeholder="VD: Công ty Công nghệ ABC" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Gói cước</label>
+                        <select id="newTenantPlan" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500">
+                            <option value="STARTER">🌱 Starter</option>
+                            <option value="PRO" selected>🚀 Pro</option>
+                            <option value="ENTERPRISE">🏢 Enterprise</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Max Users</label>
+                        <input id="newTenantMaxUsers" type="number" value="100" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mật khẩu Admin mặc định</label>
+                    <input id="newTenantAdminPass" type="text" value="123456" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500">
+                    <p class="text-[10px] text-slate-600 mt-1">Tài khoản admin mặc định: <b class="text-slate-400">admin</b> / <b class="text-slate-400">[mật khẩu trên]</b></p>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeCreateTenantModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-xs font-semibold transition border border-slate-700">
+                    Hủy
+                </button>
+                <button onclick="createTenant()" id="btnCreateTenant" class="flex-1 bg-violet-600 hover:bg-violet-500 text-white py-2.5 rounded-lg text-xs font-bold transition shadow-lg shadow-violet-600/25">
+                    Tạo Doanh Nghiệp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TENANT ACTION MODAL (Lock / Unlock / Extend) ═══ -->
+    <div id="tenantActionModal" class="fixed inset-0 z-[80] hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeTenantActionModal()"></div>
+        <div class="modal-content relative max-w-md w-full mx-auto mt-24 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 space-y-5">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-black text-white" id="actionModalTitle">Thao tác Tenant</h3>
+                <button onclick="closeTenantActionModal()" class="text-slate-500 hover:text-slate-300 text-lg">&times;</button>
+            </div>
+            <div id="actionModalBody" class="space-y-3">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ JAVASCRIPT ═══ -->
+    <script>
+        const API_BASE = "http://localhost:3000";
+        let authToken = null;
+        let currentUser = null;
+        let tenantsData = [];
+
+        // ─── Auth Guard ───
+        window.onload = function () {
+            const savedUser = localStorage.getItem('logged_user');
+            const savedToken = localStorage.getItem('auth_token');
+
+            if (!savedUser || !savedToken) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            currentUser = JSON.parse(savedUser);
+            authToken = savedToken;
+
+            // Verify this is a Super Admin
+            if (currentUser.role !== "SUPER_ADMIN") {
+                alert("Bạn không có quyền truy cập trang quản trị hệ thống!");
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById('headerUser').textContent = currentUser.fullName || "Super Admin";
+
+            // Load initial data
+            loadDashboard();
+        };
+
+        function handleLogout() {
+            localStorage.removeItem('logged_user');
+            localStorage.removeItem('auth_token');
+            window.location.href = "login.html";
+        }
+
+        // ─── Tab Switching ───
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('animate-in');
+            }
+
+            // Desktop nav
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-violet-400', 'bg-violet-500/10');
+                btn.classList.add('text-slate-400');
+            });
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-400');
+                activeNav.classList.add('text-violet-400', 'bg-violet-500/10');
+            }
+
+            // Mobile nav
+            document.querySelectorAll('[id^="mob-"]').forEach(btn => {
+                btn.classList.remove('text-violet-400', 'border-violet-500');
+                btn.classList.add('text-slate-500', 'border-transparent');
+            });
+            const activeMob = document.getElementById(`mob-${tabId}`);
+            if (activeMob) {
+                activeMob.classList.remove('text-slate-500', 'border-transparent');
+                activeMob.classList.add('text-violet-400', 'border-violet-500');
+            }
+
+            // Load data for specific tabs
+            if (tabId === 'tenants') loadTenants();
+            if (tabId === 'infra') loadMetrics();
+            if (tabId === 'packages') loadPackages();
+        }
+
+        // ─── Toast Notifications ───
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+                error: 'border-red-500/30 bg-red-500/10 text-red-300',
+                info: 'border-blue-500/30 bg-blue-500/10 text-blue-300',
+                warning: 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+            };
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+
+            const toast = document.createElement('div');
+            toast.className = `toast-in border rounded-lg px-4 py-3 text-xs font-semibold shadow-lg backdrop-blur-sm max-w-sm ${colors[type] || colors.info}`;
+            toast.innerHTML = `<span class="mr-2">${icons[type] || ''}</span>${message}`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('toast-in');
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // ─── API Helper ───
+        async function apiCall(url, method = 'GET', body = null) {
+            const opts = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(`${API_BASE}${url}`, opts);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'API Error');
+            return data;
+        }
+
+        // ─── Dashboard ───
+        async function loadDashboard() {
+            try {
+                const [tenantRes, metricsRes] = await Promise.all([
+                    apiCall('/super-admin/tenants'),
+                    apiCall('/super-admin/metrics')
+                ]);
+
+                tenantsData = tenantRes.tenants || [];
+                const m = metricsRes.metrics || {};
+
+                // KPI Cards
+                document.getElementById('kpiTenants').textContent = tenantsData.length;
+                document.getElementById('kpiUsers').textContent = (m.totalActiveUsers || 0).toLocaleString();
+                document.getElementById('kpiApi').textContent = (m.apiRequestsToday || 0).toLocaleString();
+                document.getElementById('kpiCost').textContent = `$${m.estimatedMonthlyCostUSD || 0}`;
+
+                // System Health
+                const statusEl = document.getElementById('systemStatus');
+                statusEl.textContent = m.systemStatus || 'UNKNOWN';
+                if (m.systemStatus === 'HEALTHY') {
+                    statusEl.className = 'text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md font-bold';
+                } else {
+                    statusEl.className = 'text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded-md font-bold';
+                }
+
+                document.getElementById('metricRegion').textContent = m.region || '—';
+                document.getElementById('metricLambda').textContent = m.lambdaAvgDurationMs || '—';
+                document.getElementById('metricRCU').textContent = m.dynamodbReadCapacity || '—';
+                document.getElementById('metricError').textContent = m.errorRatePercent || '—';
+
+                // Dashboard Tenants Preview (top 5)
+                renderTenantsPreview(tenantsData.slice(0, 5));
+
+            } catch (e) {
+                console.error('Dashboard load error:', e);
+                showToast('Lỗi tải dashboard: ' + e.message, 'error');
+            }
+        }
+
+        function renderTenantsPreview(tenants) {
+            const container = document.getElementById('dashboardTenantsPreview');
+            if (!tenants.length) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic py-4 text-center">Chưa có doanh nghiệp nào</p>';
+                return;
+            }
+            container.innerHTML = `
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800">
+                            <th class="text-left px-3 py-2 text-slate-500 font-semibold">Mã DN</th>
+                            <th class="text-left px-3 py-2 text-slate-500 font-semibold">Tên</th>
+                            <th class="text-center px-3 py-2 text-slate-500 font-semibold">Gói</th>
+                            <th class="text-center px-3 py-2 text-slate-500 font-semibold">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tenants.map(t => `
+                            <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                                <td class="px-3 py-2.5 font-mono font-bold text-violet-400">${t.tenantId}</td>
+                                <td class="px-3 py-2.5 text-slate-300">${t.name}</td>
+                                <td class="px-3 py-2.5 text-center">${getPlanBadge(t.plan)}</td>
+                                <td class="px-3 py-2.5 text-center">${getStatusBadge(t.status)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // ─── Tenants Management ───
+        async function loadTenants() {
+            try {
+                const data = await apiCall('/super-admin/tenants');
+                tenantsData = data.tenants || [];
+                renderTenantsTable(tenantsData);
+            } catch (e) {
+                showToast('Lỗi tải danh sách Tenant: ' + e.message, 'error');
+            }
+        }
+
+        function renderTenantsTable(tenants) {
+            const tbody = document.getElementById('tenantsTableBody');
+            if (!tenants.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-500 italic">Chưa có doanh nghiệp nào</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = tenants.map(t => `
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                    <td class="px-4 py-3 font-mono font-bold text-violet-400">${t.tenantId}</td>
+                    <td class="px-4 py-3 text-slate-200 font-semibold">${t.name}</td>
+                    <td class="px-4 py-3">${getPlanBadge(t.plan)}</td>
+                    <td class="px-4 py-3 text-center">${getStatusBadge(t.status)}</td>
+                    <td class="px-4 py-3 text-center text-slate-400">
+                        <span class="font-bold text-white">${t.userCount || 0}</span> / ${t.maxUsers || '∞'}
+                    </td>
+                    <td class="px-4 py-3 text-center text-slate-500">${formatDate(t.createdAt)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            ${t.status === 'ACTIVE' ?
+                                `<button onclick="lockTenant('${t.tenantId}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1 rounded text-[10px] font-bold transition" title="Tạm khóa">🔒 Khóa</button>` :
+                                `<button onclick="unlockTenant('${t.tenantId}')" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold transition" title="Kích hoạt">🔓 Mở</button>`
+                            }
+                            <button onclick="openExtendModal('${t.tenantId}')" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold transition" title="Gia hạn">📅 Gia hạn</button>
+                            <button onclick="deleteTenant('${t.tenantId}')" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-2 py-1 rounded text-[10px] font-bold transition" title="Xóa toàn bộ dữ liệu">🗑️ Xóa</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getPlanBadge(plan) {
+            const colors = {
+                STARTER: 'bg-slate-700/50 text-slate-300 border-slate-600',
+                PRO: 'bg-violet-500/10 text-violet-400 border-violet-500/30',
+                ENTERPRISE: 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+            };
+            const icons = { STARTER: '🌱', PRO: '🚀', ENTERPRISE: '🏢' };
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${colors[plan] || colors.STARTER}">${icons[plan] || ''} ${plan}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'ACTIVE') {
+                return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">● Active</span>';
+            }
+            if (status === 'LOCKED' || status === 'SUSPENDED') {
+                return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/30">● Locked</span>';
+            }
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-700/50 text-slate-400 border border-slate-600">● ${status}</span>`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            try {
+                return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch { return dateStr; }
+        }
+
+        // ─── Create Tenant ───
+        function openCreateTenantModal() {
+            document.getElementById('createTenantModal').classList.remove('hidden');
+            document.getElementById('newTenantId').value = '';
+            document.getElementById('newTenantName').value = '';
+            document.getElementById('newTenantPlan').value = 'PRO';
+            document.getElementById('newTenantMaxUsers').value = '100';
+            document.getElementById('newTenantAdminPass').value = '123456';
+            document.getElementById('newTenantId').focus();
+        }
+
+        function closeCreateTenantModal() {
+            document.getElementById('createTenantModal').classList.add('hidden');
+        }
+
+        async function createTenant() {
+            const tenantId = document.getElementById('newTenantId').value.trim();
+            const name = document.getElementById('newTenantName').value.trim();
+            const plan = document.getElementById('newTenantPlan').value;
+            const maxUsers = parseInt(document.getElementById('newTenantMaxUsers').value) || 100;
+            const adminPassword = document.getElementById('newTenantAdminPass').value || '123456';
+
+            if (!tenantId || !name) {
+                showToast('Vui lòng nhập đầy đủ Mã DN và Tên Công ty!', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnCreateTenant');
+            btn.disabled = true;
+            btn.textContent = 'Đang tạo...';
+
+            try {
+                const data = await apiCall('/super-admin/tenants', 'POST', { tenantId, name, plan, maxUsers, adminPassword });
+                showToast(data.message, 'success');
+                closeCreateTenantModal();
+                await Promise.all([loadTenants(), loadDashboard()]);
+            } catch (e) {
+                showToast('Lỗi tạo Tenant: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Tạo Doanh Nghiệp';
+            }
+        }
+
+        // ─── Lock / Unlock / Delete Tenant ───
+        async function lockTenant(tenantId) {
+            if (!confirm(`Bạn có chắc muốn TẠM KHÓA Tenant "${tenantId}"?\nTất cả nhân viên sẽ không thể truy cập hệ thống.`)) return;
+            try {
+                const data = await apiCall('/super-admin/tenants/status', 'PATCH', { tenantId, status: 'LOCKED' });
+                showToast(data.message, 'success');
+                await Promise.all([loadTenants(), loadDashboard()]);
+            } catch (e) {
+                showToast('Lỗi khóa Tenant: ' + e.message, 'error');
+            }
+        }
+
+        async function unlockTenant(tenantId) {
+            try {
+                const data = await apiCall('/super-admin/tenants/status', 'PATCH', { tenantId, status: 'ACTIVE' });
+                showToast(data.message, 'success');
+                await Promise.all([loadTenants(), loadDashboard()]);
+            } catch (e) {
+                showToast('Lỗi mở khóa Tenant: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteTenant(tenantId) {
+            if (!confirm(`⚠️ BÁO ĐỘNG XÓA DỮ LIỆU:\nBạn có CỰC KỲ CHẮC CHẮN muốn XÓA HOÀN TOÀN Doanh nghiệp "${tenantId}"?\nHành động này sẽ xóa toàn bộ Metadata, Tài khoản và Nhật ký Chấm công khỏi DynamoDB và KHÔNG THỂ KHÔI PHỤC!`)) return;
+            try {
+                const data = await apiCall('/super-admin/tenants', 'DELETE', { tenantId });
+                showToast(data.message, 'success');
+                await Promise.all([loadTenants(), loadDashboard()]);
+            } catch (e) {
+                showToast('Lỗi xóa Tenant: ' + e.message, 'error');
+            }
+        }
+
+        // ─── Extend Tenant ───
+        function openExtendModal(tenantId) {
+            const modal = document.getElementById('tenantActionModal');
+            document.getElementById('actionModalTitle').textContent = `📅 Gia hạn — ${tenantId}`;
+            document.getElementById('actionModalBody').innerHTML = `
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Số tháng gia hạn</label>
+                    <select id="extendMonths" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-violet-500">
+                        <option value="1">1 tháng</option>
+                        <option value="3">3 tháng</option>
+                        <option value="6" selected>6 tháng</option>
+                        <option value="12">12 tháng (1 năm)</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="closeTenantActionModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-xs font-semibold transition border border-slate-700">Hủy</button>
+                    <button onclick="extendTenant('${tenantId}')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-bold transition">Xác nhận gia hạn</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeTenantActionModal() {
+            document.getElementById('tenantActionModal').classList.add('hidden');
+        }
+
+        async function extendTenant(tenantId) {
+            const months = parseInt(document.getElementById('extendMonths').value) || 6;
+            try {
+                const data = await apiCall('/super-admin/tenants/status', 'PATCH', { tenantId, extendMonths: months });
+                showToast(`Gia hạn ${tenantId} thêm ${months} tháng thành công!`, 'success');
+                closeTenantActionModal();
+                await Promise.all([loadTenants(), loadDashboard()]);
+            } catch (e) {
+                showToast('Lỗi gia hạn: ' + e.message, 'error');
+            }
+        }
+
+        // ─── Infrastructure Metrics ───
+        async function loadMetrics() {
+            try {
+                const data = await apiCall('/super-admin/metrics');
+                const m = data.metrics || {};
+
+                // Infrastructure tab metrics
+                const statusEl = document.getElementById('infraStatus');
+                statusEl.textContent = m.systemStatus || '—';
+                statusEl.className = `text-lg font-black mt-1 ${m.systemStatus === 'HEALTHY' ? 'text-emerald-400' : 'text-red-400'}`;
+
+                document.getElementById('infraLambdaCalls').textContent = (m.lambdaInvocations || 0).toLocaleString();
+                document.getElementById('infraLambdaAvg').textContent = `${m.lambdaAvgDurationMs || 0} ms`;
+                document.getElementById('infraDDBRead').textContent = `${m.dynamodbReadCapacity || 0} RCU`;
+                document.getElementById('infraDDBWrite').textContent = `${m.dynamodbWriteCapacity || 0} WCU`;
+
+                const errEl = document.getElementById('infraErrorRate');
+                errEl.textContent = `${m.errorRatePercent || 0}%`;
+                errEl.className = `text-lg font-black mt-1 ${(m.errorRatePercent || 0) < 1 ? 'text-emerald-400' : 'text-red-400'}`;
+
+                document.getElementById('terminalRegion').textContent = m.region || 'ap-southeast-1';
+
+                // Terminal logs
+                renderTerminalLogs(m.serverlessLogs || []);
+
+                showToast('Metrics updated', 'info');
+            } catch (e) {
+                showToast('Lỗi tải metrics: ' + e.message, 'error');
+            }
+        }
+
+        function renderTerminalLogs(logs) {
+            const terminal = document.getElementById('terminalBody');
+            const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+            let html = `<p class="text-slate-600 log-line">──────────────────────────────────────────────────────────────</p>`;
+            html += `<p class="text-slate-500 log-line">  SaaS Attendance Platform — CloudWatch Log Stream</p>`;
+            html += `<p class="text-slate-500 log-line">  Region: ap-southeast-1 · Refreshed: ${now}</p>`;
+            html += `<p class="text-slate-600 log-line">──────────────────────────────────────────────────────────────</p>`;
+
+            logs.forEach(log => {
+                const ts = new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const levelClass = `log-${log.level}`;
+                const levelPad = log.level.padEnd(5);
+                html += `<p class="log-line"><span class="text-slate-600">[${ts}]</span> <span class="${levelClass} font-bold">${levelPad}</span> <span class="text-slate-500">${log.service}:</span> <span class="text-slate-300">${log.message}</span></p>`;
+            });
+
+            // Add some synthetic "live" entries
+            const liveEntries = [
+                { level: "INFO", service: "API Gateway", message: "Health check passed — all endpoints operational" },
+                { level: "INFO", service: "DynamoDB Streams", message: "Processed 147 change events in last 60s" },
+                { level: "DEBUG", service: "Lambda Authorizer", message: "Token cache hit ratio: 94.2%" },
+                { level: "INFO", service: "CloudWatch Alarms", message: "All 12 alarms in OK state" },
+            ];
+            liveEntries.forEach(entry => {
+                const ts = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const levelClass = `log-${entry.level}`;
+                const levelPad = entry.level.padEnd(5);
+                html += `<p class="log-line"><span class="text-slate-600">[${ts}]</span> <span class="${levelClass} font-bold">${levelPad}</span> <span class="text-slate-500">${entry.service}:</span> <span class="text-slate-300">${entry.message}</span></p>`;
+            });
+
+            html += `<p class="text-slate-600 log-line mt-1">$ <span class="cursor-blink text-emerald-400">_</span></p>`;
+
+            terminal.innerHTML = html;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // ─── Packages Config ───
+        async function loadPackages() {
+            try {
+                const data = await apiCall('/super-admin/packages');
+                const packages = data.packages || [];
+                packages.forEach(pkg => {
+                    const name = pkg.name ? pkg.name.toLowerCase() : '';
+                    if (name === 'starter' || name === 'pro' || name === 'enterprise') {
+                        const priceInput = document.getElementById(`pkg-${name}-price`);
+                        const maxInput = document.getElementById(`pkg-${name}-max`);
+                        if (priceInput && pkg.price !== undefined) priceInput.value = pkg.price;
+                        if (maxInput && pkg.maxUsers !== undefined) maxInput.value = pkg.maxUsers;
+
+                        const lblPrice = document.getElementById(`lbl-${name}-price`);
+                        const lblMax = document.getElementById(`lbl-${name}-max`);
+                        if (lblPrice) lblPrice.textContent = Number(pkg.price || 0).toLocaleString('vi-VN');
+                        if (lblMax) lblMax.textContent = pkg.maxUsers;
+                    }
+                });
+            } catch (e) {
+                console.error('Lỗi tải gói cước:', e);
+            }
+        }
+
+        async function savePackages() {
+            const starterMax = parseInt(document.getElementById('pkg-starter-max').value) || 50;
+            const proPrice = parseInt(document.getElementById('pkg-pro-price').value) || 299000;
+            const proMax = parseInt(document.getElementById('pkg-pro-max').value) || 300;
+            const enterprisePrice = parseInt(document.getElementById('pkg-enterprise-price').value) || 500000;
+            const enterpriseMax = parseInt(document.getElementById('pkg-enterprise-max').value) || 1000;
+
+            const packages = [
+                {
+                    name: "STARTER",
+                    displayName: "Cơ bản (Miễn phí)",
+                    price: 0,
+                    maxUsers: starterMax,
+                    features: [`Tối đa ${starterMax} nhân viên`, "Chấm công định vị GPS", "Xuất báo cáo Excel", "Hỗ trợ email 24/7"],
+                    isActive: true
+                },
+                {
+                    name: "PRO",
+                    displayName: "Pro (Khuyên dùng)",
+                    price: proPrice,
+                    maxUsers: proMax,
+                    features: [`Tối đa ${proMax} nhân viên`, "Chấm công GPS an ninh cao", "Báo cáo Excel nâng cao", "Quản trị nhân sự & Phân quyền", "Webhook & Realtime Alert", "Hỗ trợ ưu tiên 24/7"],
+                    isActive: true
+                },
+                {
+                    name: "ENTERPRISE",
+                    displayName: "Enterprise",
+                    price: enterprisePrice,
+                    maxUsers: enterpriseMax,
+                    features: ["Trên 300 nhân viên (Không giới hạn)", "Multi-tenant isolation", "SSO / SAML / OIDC", "API tùy chỉnh doanh nghiệp", "Cam kết SLA 99.9%", "Dedicated Support Manager"],
+                    isActive: true
+                }
+            ];
+
+            try {
+                const data = await apiCall('/super-admin/packages', 'POST', { packages });
+                showToast(data.message || 'Đã lưu cấu hình gói cước!', 'success');
+                await loadPackages();
+            } catch (e) {
+                showToast('Lỗi lưu cấu hình: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

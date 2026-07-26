@@ -27,6 +27,11 @@ const Icons = {
   shield: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
   settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
   lock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
+  request: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>,
+  schedule: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>,
+  auditLog: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>,
+  approve: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>,
+  reject: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>,
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -37,6 +42,22 @@ const initialAuthForm = {
   tenantId: '', userId: '', password: '',
   fullName: '', email: '', phone: '',
   otpType: 'PHONE', otpCode: '',
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RBAC HELPER — Normalize role checks across frontend
+// ═══════════════════════════════════════════════════════════════
+function isAdmin(role) {
+  if (!role) return false;
+  const r = role.toUpperCase();
+  return r === 'ADMIN' || r === 'TENANT_ADMIN';
+}
+function isManagerRole(role) {
+  if (!role) return false;
+  return role.toUpperCase() === 'MANAGER';
+}
+function isManagerOrAdminRole(role) {
+  return isAdmin(role) || isManagerRole(role);
 }
 
 function App() {
@@ -99,6 +120,21 @@ function App() {
   // Employee Statistics Summary Lists state (For Manager/Admin UI table)
   const [employeeStatsSummary, setEmployeeStatsSummary] = useState([])
   const [adminTabMode, setAdminTabMode] = useState('users') // users | stats
+
+  // Requests / Leave state
+  const [myRequests, setMyRequests] = useState([])
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [leaveBalance, setLeaveBalance] = useState({ totalDays: 12, usedDays: 0, remainingDays: 12, pendingCount: 0 })
+  const [requestForm, setRequestForm] = useState({ type: 'LEAVE', startDate: '', endDate: '', reason: '', otHours: 0 })
+  const [reviewComment, setReviewComment] = useState('')
+
+  // Schedule state
+  const [myShifts, setMyShifts] = useState([])
+  const [teamShifts, setTeamShifts] = useState([])
+  const [shiftAssignForm, setShiftAssignForm] = useState({ targetUserId: '', weekDate: '', shiftType: 'CA_HANH_CHINH', note: '' })
+
+  // Audit Log state
+  const [auditLogs, setAuditLogs] = useState([])
 
   // Attendance CRUD modal states
   const [showCrudModal, setShowCrudModal] = useState(false)
@@ -852,6 +888,115 @@ function App() {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  //  REQUESTS, LEAVE, SCHEDULE, AUDIT API FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  const loadMyRequests = async () => {
+    try {
+      const res = await fetch(`${API}/requests/my-requests`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setMyRequests(data.requests || [])
+    } catch (e) { setMyRequests([]) }
+  }
+
+  const loadPendingRequests = async () => {
+    try {
+      const res = await fetch(`${API}/manager/requests`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setPendingRequests(data.requests || [])
+    } catch (e) { setPendingRequests([]) }
+  }
+
+  const loadLeaveBalance = async () => {
+    try {
+      const res = await fetch(`${API}/user/leave-balance`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setLeaveBalance(data.leaveBalance || { totalDays: 12, usedDays: 0, remainingDays: 12, pendingCount: 0 })
+    } catch (e) { /* keep defaults */ }
+  }
+
+  const handleSubmitRequest = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/requests/create`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestForm)
+      })
+      const data = await res.json()
+      showMessage(data.message, res.ok ? 'success' : 'error')
+      if (res.ok) {
+        setRequestForm({ type: 'LEAVE', startDate: '', endDate: '', reason: '', otHours: 0 })
+        await loadMyRequests()
+        await loadLeaveBalance()
+      }
+    } catch (e) { showMessage('Lỗi gửi đơn: ' + e.message, 'error') }
+    finally { setLoading(false) }
+  }
+
+  const handleApproveReject = async (requestId, status) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/manager/requests/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, status, reviewComment })
+      })
+      const data = await res.json()
+      showMessage(data.message, res.ok ? 'success' : 'error')
+      if (res.ok) {
+        setReviewComment('')
+        await loadPendingRequests()
+      }
+    } catch (e) { showMessage('Lỗi xử lý đơn: ' + e.message, 'error') }
+    finally { setLoading(false) }
+  }
+
+  const loadMyShifts = async () => {
+    try {
+      const res = await fetch(`${API}/user/shifts`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setMyShifts(data.shifts || [])
+    } catch (e) { setMyShifts([]) }
+  }
+
+  const loadTeamShifts = async () => {
+    try {
+      const res = await fetch(`${API}/manager/shifts`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setTeamShifts(data.shifts || [])
+    } catch (e) { setTeamShifts([]) }
+  }
+
+  const handleAssignShift = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/manager/shifts/assign`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(shiftAssignForm)
+      })
+      const data = await res.json()
+      showMessage(data.message, res.ok ? 'success' : 'error')
+      if (res.ok) {
+        setShiftAssignForm({ targetUserId: '', weekDate: '', shiftType: 'CA_HANH_CHINH', note: '' })
+        await loadTeamShifts()
+      }
+    } catch (e) { showMessage('Lỗi phân ca: ' + e.message, 'error') }
+    finally { setLoading(false) }
+  }
+
+  const loadAuditLogs = async () => {
+    try {
+      const res = await fetch(`${API}/admin/audit-logs`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setAuditLogs(data.logs || [])
+    } catch (e) { setAuditLogs([]) }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   //  PAGE NAVIGATION
   // ═══════════════════════════════════════════════════════════════
 
@@ -874,6 +1019,19 @@ function App() {
       fetchEmployeeList()
     }
     if (page === 'billing') loadSubscription()
+    if (page === 'requests') {
+      loadMyRequests()
+      loadLeaveBalance()
+      if (isManagerOrAdminRole(userRole)) loadPendingRequests()
+    }
+    if (page === 'schedule') {
+      loadMyShifts()
+      if (isManagerOrAdminRole(userRole)) {
+        loadTeamShifts()
+        fetchEmployeeList()
+      }
+    }
+    if (page === 'audit') loadAuditLogs()
   }
 
   const handleFieldChange = (e) => {
@@ -885,15 +1043,20 @@ function App() {
   //  NAV ITEMS CONFIG (Privilege restricted tabs)
   // ═══════════════════════════════════════════════════════════════
 
+  const userRole = user?.role || 'USER'
+
   const navItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: Icons.dashboard },
     { id: 'attendance', label: 'Chấm công', icon: Icons.clock },
     { id: 'history', label: 'Lịch sử', icon: Icons.history },
+    { id: 'requests', label: 'Đơn từ', icon: Icons.request },
+    { id: 'schedule', label: 'Lịch làm việc', icon: Icons.schedule },
     { id: 'reports', label: 'Báo cáo', icon: Icons.report },
     { id: 'divider1', type: 'divider' },
     { id: 'profile', label: 'Hồ sơ', icon: Icons.profile },
-    { id: 'admin', label: 'Quản trị', icon: Icons.admin, adminOnly: true },
-    { id: 'billing', label: 'Gói dịch vụ', icon: Icons.billing, billingOnly: true },
+    { id: 'admin', label: 'Quản trị', icon: Icons.admin, roles: ['ADMIN', 'TENANT_ADMIN', 'MANAGER'] },
+    { id: 'billing', label: 'Gói dịch vụ', icon: Icons.billing, roles: ['ADMIN', 'TENANT_ADMIN'] },
+    { id: 'audit', label: 'Nhật ký hệ thống', icon: Icons.auditLog, roles: ['ADMIN', 'TENANT_ADMIN'] },
   ]
 
   // ═══════════════════════════════════════════════════════════════
@@ -1755,7 +1918,8 @@ function App() {
                 </div>
 
                 <form onSubmit={handleSaveShiftConfig}>
-                  {/* Group 1: Shift Time */}
+                  <fieldset disabled={user.role !== 'ADMIN'} style={{ border: 'none', padding: 0, margin: 0 }}>
+                    {/* Group 1: Shift Time */}
                   <div style={{ background: 'rgba(0,0,0,0.15)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', border: '1px solid var(--color-border-subtle)' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 'var(--space-sm)', color: 'var(--color-accent-hover)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       🕒 Ca làm việc chuẩn (Shift Time)
@@ -1878,10 +2042,12 @@ function App() {
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Làm thêm trên {shiftConfigForm.otThresholdMinutes} phút sau giờ kết thúc ({shiftConfigForm.shiftEnd}) mới bắt đầu tính OT</span>
                     </div>
                   </div>
-
-                  <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px 24px', fontWeight: 700 }}>
-                    {loading ? <><span className="spinner"></span> Đang lưu...</> : <>💾 Lưu cấu hình ca làm việc</>}
-                  </button>
+                  </fieldset>
+                  {user.role === 'ADMIN' && (
+                    <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px 24px', fontWeight: 700, marginTop: 'var(--space-md)' }}>
+                      {loading ? <><span className="spinner"></span> Đang lưu...</> : <>💾 Lưu cấu hình ca làm việc</>}
+                    </button>
+                  )}
                 </form>
               </div>
             )}
@@ -1970,6 +2136,325 @@ function App() {
           </>
         )
 
+      // ═══════════════════════════════════════════════════════════════
+      //  REQUESTS PAGE (Đơn từ — All roles)
+      // ═══════════════════════════════════════════════════════════════
+      case 'requests':
+        return (
+          <>
+            <div className="page-header">
+              <p className="eyebrow">Đơn từ & Nghỉ phép</p>
+              <h2>{isManagerOrAdminRole(userRole) ? 'Quản lý Đơn từ' : 'Đơn từ Cá nhân'}</h2>
+              <p className="subtitle">{isManagerOrAdminRole(userRole) ? 'Duyệt đơn, theo dõi nghỉ phép toàn team' : 'Gửi đơn nghỉ phép, OT, giải trình'}</p>
+            </div>
+
+            {/* Leave Balance Card */}
+            <div className="stats-grid" style={{ marginBottom: 'var(--space-lg)' }}>
+              <div className="stat-card accent" style={{ animationDelay: '0ms' }}>
+                <div className="stat-icon">{Icons.schedule}</div>
+                <div className="stat-value">{leaveBalance.totalDays}</div>
+                <div className="stat-label">Tổng ngày phép/năm</div>
+              </div>
+              <div className="stat-card success" style={{ animationDelay: '80ms' }}>
+                <div className="stat-icon">{Icons.approve}</div>
+                <div className="stat-value">{leaveBalance.usedDays}</div>
+                <div className="stat-label">Đã sử dụng</div>
+              </div>
+              <div className="stat-card info" style={{ animationDelay: '160ms' }}>
+                <div className="stat-icon">{Icons.activity}</div>
+                <div className="stat-value" style={{ color: leaveBalance.remainingDays <= 2 ? '#ef4444' : 'inherit' }}>{leaveBalance.remainingDays}</div>
+                <div className="stat-label">Còn lại</div>
+              </div>
+              <div className="stat-card warning" style={{ animationDelay: '240ms' }}>
+                <div className="stat-icon">{Icons.clock}</div>
+                <div className="stat-value">{leaveBalance.pendingCount}</div>
+                <div className="stat-label">Đơn chờ duyệt</div>
+              </div>
+            </div>
+
+            {/* Leave Balance Progress Bar */}
+            <div className="card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-sm)' }}>Quỹ phép năm {new Date().getFullYear()}</div>
+              <div className="leave-progress-bar">
+                <div className="leave-progress-fill" style={{ width: `${Math.min(100, (leaveBalance.usedDays / leaveBalance.totalDays) * 100)}%` }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                <span>Đã dùng: {leaveBalance.usedDays}/{leaveBalance.totalDays} ngày</span>
+                <span>Còn lại: {leaveBalance.remainingDays} ngày</span>
+              </div>
+            </div>
+
+            {/* Submit Request Form */}
+            <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+              <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📝 Tạo đơn mới</h3>
+              <form onSubmit={handleSubmitRequest} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
+                  <div className="form-group">
+                    <label className="form-label">Loại đơn</label>
+                    <select className="form-select" value={requestForm.type} onChange={(e) => setRequestForm(p => ({ ...p, type: e.target.value }))}>
+                      <option value="LEAVE">🏖️ Nghỉ phép</option>
+                      <option value="OT">⏰ Tăng ca (OT)</option>
+                      <option value="ADJUSTMENT">📋 Giải trình / Điều chỉnh</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Từ ngày <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input className="form-input" type="date" value={requestForm.startDate} onChange={(e) => setRequestForm(p => ({ ...p, startDate: e.target.value }))} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Đến ngày</label>
+                    <input className="form-input" type="date" value={requestForm.endDate} onChange={(e) => setRequestForm(p => ({ ...p, endDate: e.target.value }))} />
+                  </div>
+                  {requestForm.type === 'OT' && (
+                    <div className="form-group">
+                      <label className="form-label">Số giờ OT</label>
+                      <input className="form-input" type="number" min="0.5" max="12" step="0.5" value={requestForm.otHours} onChange={(e) => setRequestForm(p => ({ ...p, otHours: Number(e.target.value) }))} />
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Lý do <span style={{ color: '#ef4444' }}>*</span></label>
+                  <textarea className="form-input" rows={3} placeholder="Nhập lý do chi tiết..." value={requestForm.reason} onChange={(e) => setRequestForm(p => ({ ...p, reason: e.target.value }))} required style={{ resize: 'vertical' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn btn-accent" disabled={loading}>{loading ? '⏳ Đang gửi...' : '📨 Gửi đơn'}</button>
+                </div>
+              </form>
+            </div>
+
+            {/* Manager/Admin: Pending Requests Approval */}
+            {isManagerOrAdminRole(userRole) && (
+              <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📋 Đơn chờ duyệt ({pendingRequests.filter(r => r.Status === 'PENDING').length})</h3>
+                {pendingRequests.filter(r => r.Status === 'PENDING').length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                    {pendingRequests.filter(r => r.Status === 'PENDING').map(req => (
+                      <div key={req.RequestId} className="request-approval-card">
+                        <div className="request-approval-header">
+                          <div>
+                            <strong>{req.UserFullName || req.UserId}</strong>
+                            <span className={`badge request-type-${req.Type?.toLowerCase()}`} style={{ marginLeft: '8px', padding: '2px 8px', fontSize: '0.65rem' }}>
+                              {req.Type === 'LEAVE' ? '🏖️ Nghỉ phép' : req.Type === 'OT' ? '⏰ OT' : '📋 Giải trình'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(req.CreatedAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 'var(--space-sm) 0' }}>
+                          <span>📅 {req.StartDate} → {req.EndDate || req.StartDate}</span>
+                          {req.OtHours > 0 && <span style={{ marginLeft: '12px' }}>⏰ {req.OtHours}h OT</span>}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-sm)' }}>💬 {req.Reason}</div>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+                          <input className="form-input" type="text" placeholder="Ghi chú duyệt đơn (tùy chọn)..." style={{ flex: 1, fontSize: '0.8rem' }} value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+                          <button className="btn btn-sm btn-accent" disabled={loading} onClick={() => handleApproveReject(req.RequestId, 'APPROVED')} style={{ whiteSpace: 'nowrap' }}>✅ Duyệt</button>
+                          <button className="btn btn-sm btn-danger" disabled={loading} onClick={() => handleApproveReject(req.RequestId, 'REJECTED')} style={{ whiteSpace: 'nowrap', background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>❌ Từ chối</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state"><p>Không có đơn nào chờ duyệt.</p></div>
+                )}
+              </div>
+            )}
+
+            {/* My Requests History */}
+            <div className="card" style={{ padding: 'var(--space-lg)' }}>
+              <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📄 Đơn từ của tôi ({myRequests.length})</h3>
+              {myRequests.length > 0 ? (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Loại</th>
+                        <th>Từ ngày</th>
+                        <th>Đến ngày</th>
+                        <th>Lý do</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày gửi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myRequests.map(req => (
+                        <tr key={req.RequestId}>
+                          <td><span className={`badge request-type-${req.Type?.toLowerCase()}`}>{req.Type === 'LEAVE' ? 'Nghỉ phép' : req.Type === 'OT' ? 'OT' : 'Giải trình'}</span></td>
+                          <td>{req.StartDate}</td>
+                          <td>{req.EndDate || '—'}</td>
+                          <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.Reason}</td>
+                          <td>
+                            <span className={`badge request-status-${req.Status?.toLowerCase()}`}>
+                              {req.Status === 'PENDING' ? '⏳ Chờ duyệt' : req.Status === 'APPROVED' ? '✅ Đã duyệt' : '❌ Từ chối'}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '0.8rem' }}>{new Date(req.CreatedAt).toLocaleDateString('vi-VN')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state"><p>Bạn chưa gửi đơn từ nào.</p></div>
+              )}
+            </div>
+          </>
+        )
+
+      // ═══════════════════════════════════════════════════════════════
+      //  SCHEDULE PAGE (Lịch làm việc — All roles)
+      // ═══════════════════════════════════════════════════════════════
+      case 'schedule':
+        return (
+          <>
+            <div className="page-header">
+              <p className="eyebrow">Lịch làm việc</p>
+              <h2>{isManagerOrAdminRole(userRole) ? 'Quản lý & Phân ca' : 'Lịch Ca Cá nhân'}</h2>
+              <p className="subtitle">{isManagerOrAdminRole(userRole) ? 'Xem và phân ca cho nhân viên' : 'Xem ca làm việc được phân công'}</p>
+            </div>
+
+            {/* Manager/Admin: Assign Shift Form */}
+            {isManagerOrAdminRole(userRole) && (
+              <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📅 Phân ca làm việc</h3>
+                <form onSubmit={handleAssignShift} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Nhân viên <span style={{ color: '#ef4444' }}>*</span></label>
+                      <select className="form-select" value={shiftAssignForm.targetUserId} onChange={(e) => setShiftAssignForm(p => ({ ...p, targetUserId: e.target.value }))} required>
+                        <option value="">— Chọn nhân viên —</option>
+                        {employeeList.map(emp => <option key={emp.userId} value={emp.userId}>{emp.fullName || emp.userId}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Ngày / Tuần <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input className="form-input" type="date" value={shiftAssignForm.weekDate} onChange={(e) => setShiftAssignForm(p => ({ ...p, weekDate: e.target.value }))} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Loại ca</label>
+                      <select className="form-select" value={shiftAssignForm.shiftType} onChange={(e) => setShiftAssignForm(p => ({ ...p, shiftType: e.target.value }))}>
+                        <option value="CA_HANH_CHINH">Ca Hành chính (08:00–17:00)</option>
+                        <option value="CA_SANG">Ca Sáng (06:00–14:00)</option>
+                        <option value="CA_CHIEU">Ca Chiều (14:00–22:00)</option>
+                        <option value="CA_DEM">Ca Đêm (22:00–06:00)</option>
+                        <option value="NGHI">Nghỉ</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Ghi chú</label>
+                    <input className="form-input" type="text" placeholder="Ghi chú cho ca này..." value={shiftAssignForm.note} onChange={(e) => setShiftAssignForm(p => ({ ...p, note: e.target.value }))} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button type="submit" className="btn btn-accent" disabled={loading}>{loading ? '⏳ Đang xử lý...' : '📅 Phân ca'}</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Team Shifts Table (Manager/Admin) */}
+            {isManagerOrAdminRole(userRole) && teamShifts.length > 0 && (
+              <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>👥 Ca làm việc Team ({teamShifts.length})</h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Nhân viên</th><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Phân bởi</th></tr>
+                    </thead>
+                    <tbody>
+                      {teamShifts.map((s, i) => (
+                        <tr key={i}>
+                          <td><strong>{s.UserId}</strong></td>
+                          <td>{s.WeekDate}</td>
+                          <td><span className="badge shift-type">{s.ShiftType}</span></td>
+                          <td style={{ fontSize: '0.8rem' }}>{s.Note || '—'}</td>
+                          <td style={{ fontSize: '0.8rem' }}>{s.AssignedBy}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Personal Shifts */}
+            <div className="card" style={{ padding: 'var(--space-lg)' }}>
+              <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>🗓️ Ca làm việc của tôi ({myShifts.length})</h3>
+              {myShifts.length > 0 ? (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Cập nhật</th></tr>
+                    </thead>
+                    <tbody>
+                      {myShifts.map((s, i) => (
+                        <tr key={i}>
+                          <td>{s.WeekDate}</td>
+                          <td><span className="badge shift-type">{s.ShiftType}</span></td>
+                          <td style={{ fontSize: '0.8rem' }}>{s.Note || '—'}</td>
+                          <td style={{ fontSize: '0.8rem' }}>{s.UpdatedAt ? new Date(s.UpdatedAt).toLocaleDateString('vi-VN') : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state"><p>Chưa có ca nào được phân công cho bạn.</p></div>
+              )}
+            </div>
+          </>
+        )
+
+      // ═══════════════════════════════════════════════════════════════
+      //  AUDIT LOG PAGE (Admin/Tenant Admin only)
+      // ═══════════════════════════════════════════════════════════════
+      case 'audit':
+        return (
+          <>
+            <div className="page-header">
+              <p className="eyebrow">Nhật ký Hệ thống</p>
+              <h2>Audit Log</h2>
+              <p className="subtitle">Theo dõi mọi thao tác quan trọng trong hệ thống doanh nghiệp.</p>
+            </div>
+
+            <div className="card" style={{ padding: 'var(--space-lg)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                <h3 style={{ fontSize: '1rem' }}>🛡️ Lịch sử hành động ({auditLogs.length})</h3>
+                <button className="btn btn-sm btn-ghost" onClick={loadAuditLogs}>🔄 Làm mới</button>
+              </div>
+
+              {auditLogs.length > 0 ? (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table" style={{ fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Thời gian</th>
+                        <th>Người thực hiện</th>
+                        <th>Vai trò</th>
+                        <th>Hành động</th>
+                        <th>Đối tượng</th>
+                        <th>Chi tiết</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs.map((log, i) => (
+                        <tr key={i}>
+                          <td style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{log.timestamp ? new Date(log.timestamp).toLocaleString('vi-VN') : '—'}</td>
+                          <td><strong>{log.actor}</strong></td>
+                          <td><span className={`badge ${log.actorRole === 'TENANT_ADMIN' || log.actorRole === 'ADMIN' ? 'admin-role' : log.actorRole === 'MANAGER' ? 'manager-role' : 'user-role'}`} style={{ padding: '2px 8px', fontSize: '0.65rem' }}>{log.actorRole}</span></td>
+                          <td><span className="badge audit-action">{log.action}</span></td>
+                          <td>{log.target || '—'}</td>
+                          <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.details || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state"><p>Chưa có nhật ký hành động nào được ghi nhận.</p></div>
+              )}
+            </div>
+          </>
+        )
+
       default:
         return null
     }
@@ -2001,9 +2486,8 @@ function App() {
         <nav className="sidebar-nav">
           {navItems.map(item => {
             if (item.type === 'divider') return <div key={item.id} className="nav-divider" />
-            // Role enforcement tab visibility
-            if (item.adminOnly && user.role !== 'ADMIN' && user.role !== 'MANAGER') return null;
-            if (item.billingOnly && user.role !== 'ADMIN' && user.role !== 'MANAGER') return null;
+            // Role enforcement tab visibility — unified roles-based check
+            if (item.roles && !item.roles.includes(userRole.toUpperCase())) return null;
 
             return (
               <button
@@ -2132,7 +2616,7 @@ function App() {
                       >
                         <option value="EMPLOYEE">Employee</option>
                         <option value="MANAGER">Manager</option>
-                        <option value="ADMIN">Admin</option>
+                        {user.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
                       </select>
                     </div>
                   </>

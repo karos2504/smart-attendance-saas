@@ -74,7 +74,13 @@
                 }
                 localStorage.setItem('logged_user', JSON.stringify(data.user));
                 localStorage.setItem('auth_token', data.token);
-                window.location.href = "index.html";
+
+                // Redirect Super Admin to dedicated console page
+                if (data.user && data.user.role === "SUPER_ADMIN") {
+                    window.location.href = "superadmin.html";
+                } else {
+                    window.location.href = "index.html";
+                }
 
             } catch (error) {
                 console.error(error);

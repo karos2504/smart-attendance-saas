@@ -1,30 +1,34 @@
 {
   "yaml.customTags": [
-    "!And",
     "!And sequence",
-    "!Base64",
-    "!Equals",
-    "!Equals sequence",
-    "!FindInMap",
-    "!FindInMap sequence",
-    "!GetAZs",
-    "!GetAtt",
-    "!If",
     "!If sequence",
-    "!ImportValue",
-    "!ImportValue sequence",
-    "!Join",
-    "!Join sequence",
-    "!Not",
     "!Not sequence",
-    "!Or",
+    "!Equals sequence",
     "!Or sequence",
+    "!FindInMap sequence",
+    "!Base64",
+    "!Cidr",
+    "!Cidr sequence",
+    "!Ref scalar",
     "!Ref",
-    "!Select",
-    "!Select sequence",
-    "!Split",
-    "!Split sequence",
     "!Sub",
-    "!Sub sequence"
-  ]
+    "!Sub scalar",
+    "!Sub sequence",
+    "!GetAtt",
+    "!GetAtt scalar",
+    "!GetAtt sequence",
+    "!GetAZs",
+    "!ImportValue",
+    "!ImportValue scalar",
+    "!Select sequence",
+    "!Split sequence",
+    "!Join sequence",
+    "!Condition scalar"
+  ],
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/awslabs/goformation/master/generate/sam-2016-10-31.json": [
+      "template.yaml",
+      "template.yml"
+    ]
+  }
 }

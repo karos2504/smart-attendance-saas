@@ -1,4 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/master/generate/sam-2016-10-31.json
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: SaaS Attendance Full Serverless Platform
 
@@ -11,7 +12,6 @@ Parameters:
     Type: String
     Default: "SaaS-Secure-Verification-Token-2026"
     Description: Custom secret header to verify requests originate from CloudFront
-
 
 Resources:
   # ─── Cognito User Pool ───
@@ -52,7 +52,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: smart-attendance-app-client
-      UserPoolId: !Ref CognitoUserPool
+      UserPoolId: { Ref: CognitoUserPool }
       GenerateSecret: false
       AccessTokenValidity: 15
       IdTokenValidity: 15
@@ -78,9 +78,9 @@ Resources:
           CognitoAuthorizer:
             IdentitySource: $request.header.Authorization
             JwtConfiguration:
-              issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}'
+              issuer: { Fn::Sub: "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}" }
               audience:
-                - !Ref CognitoUserPoolClient
+                - Ref: CognitoUserPoolClient
       CorsConfiguration:
         AllowOrigins:
           - "*"
@@ -153,8 +153,8 @@ Resources:
   # ApiWafAssociation:
   #   Type: AWS::WAFv2::WebACLAssociation
   #   Properties:
-  #     ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${AttendanceApi}/stages/prod'
-  #     WebACLArn: !GetAtt ApiWAF.Arn
+  #     ResourceArn: { Fn::Sub: 'arn:aws:apigateway:${AWS::Region}::/apis/${AttendanceApi}/stages/prod' }
+  #     WebACLArn: { Fn::GetAtt: [ApiWAF, Arn] }
 
   # ─── Security Notifications ───
   SecurityAlertsTopic:
@@ -172,7 +172,7 @@ Resources:
       MetricName: 4XXError
       Dimensions:
         - Name: ApiId
-          Value: !Ref AttendanceApi
+          Value: { Ref: AttendanceApi }
         - Name: Stage
           Value: prod
       Statistic: Sum
@@ -181,7 +181,7 @@ Resources:
       Threshold: 10
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SecurityAlertsTopic
+        - Ref: SecurityAlertsTopic
 
   # ─── HelloWorld Lambda execution error alarm ───
   LambdaErrorAlarm:
@@ -193,14 +193,14 @@ Resources:
       MetricName: Errors
       Dimensions:
         - Name: FunctionName
-          Value: !Ref HelloWorldFunction
+          Value: { Ref: HelloWorldFunction }
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
       Threshold: 2
       ComparisonOperator: GreaterThanOrEqualToThreshold
       AlarmActions:
-        - !Ref SecurityAlertsTopic
+        - Ref: SecurityAlertsTopic
 
   # ─── KMS Key for Data Encryption ───
   DataKMSKey:
@@ -209,14 +209,14 @@ Resources:
       Description: CMK key for Smart Attendance database and S3 encryption
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: Enable IAM Policies
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+              AWS: { Fn::Sub: "arn:aws:iam::${AWS::AccountId}:root" }
+            Action: "kms:*"
+            Resource: "*"
 
   # ─── DynamoDB Database (Single-Table Design) ───
   SaaSAttendanceTable:
@@ -237,7 +237,7 @@ Resources:
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
-        KMSMasterKeyId: !Ref DataKMSKey
+        KMSMasterKeyId: { Ref: DataKMSKey }
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       StreamSpecification:
@@ -247,7 +247,7 @@ Resources:
   SaaSReportBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "saas-attendance-reports-${AWS::AccountId}-${AWS::Region}"
+      BucketName: { Fn::Sub: "saas-attendance-reports-${AWS::AccountId}-${AWS::Region}" }
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
@@ -256,8 +256,8 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: 'aws:kms'
-              KMSMasterKeyID: !Ref DataKMSKey
+              SSEAlgorithm: "aws:kms"
+              KMSMasterKeyID: { Ref: DataKMSKey }
             BucketKeyEnabled: true
       LifecycleConfiguration:
         Rules:
@@ -271,20 +271,20 @@ Resources:
   SaaSReportBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref SaaSReportBucket
+      Bucket: { Ref: SaaSReportBucket }
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: ForceSSLOnlyAccess
             Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
+            Principal: "*"
+            Action: "s3:*"
             Resource:
-              - !Sub 'arn:aws:s3:::${SaaSReportBucket}'
-              - !Sub 'arn:aws:s3:::${SaaSReportBucket}/*'
+              - Fn::Sub: "arn:aws:s3:::${SaaSReportBucket}"
+              - Fn::Sub: "arn:aws:s3:::${SaaSReportBucket}/*"
             Condition:
               Bool:
-                'aws:SecureTransport': 'false'
+                "aws:SecureTransport": "false"
 
   # ─── SQS Dead Letter Queue (DLQ) ───
   EmailDLQ:
@@ -301,7 +301,7 @@ Resources:
       KmsMasterKeyId: alias/aws/sqs
       VisibilityTimeout: 30
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt EmailDLQ.Arn
+        deadLetterTargetArn: { Fn::GetAtt: [EmailDLQ, Arn] }
         maxReceiveCount: 3
 
   # ─── Notification Queue for Reports ───
@@ -320,25 +320,25 @@ Resources:
       Timeout: 15
       Tracing: Active
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
-              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*'
+              Resource: { Fn::Sub: "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*" }
             - Effect: Allow
               Action:
                 - sqs:ReceiveMessage
                 - sqs:DeleteMessage
                 - sqs:GetQueueAttributes
-              Resource: !GetAtt EmailQueue.Arn
+              Resource: { Fn::GetAtt: [EmailQueue, Arn] }
             - Effect: Allow
               Action:
                 - ses:SendEmail
                 - ses:SendRawEmail
-              Resource: '*'
+              Resource: "*"
       Environment:
         Variables:
           SENDER_EMAIL: "noreply@your-domain.com"
@@ -346,7 +346,7 @@ Resources:
         SQSTrigger:
           Type: SQS
           Properties:
-            Queue: !GetAtt EmailQueue.Arn
+            Queue: { Fn::GetAtt: [EmailQueue, Arn] }
             BatchSize: 5
 
   # ─── Step Functions IAM Execution Role ───
@@ -354,16 +354,16 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: !Sub 'states.${AWS::Region}.amazonaws.com'
-            Action: 'sts:AssumeRole'
+              Service: { Fn::Sub: "states.${AWS::Region}.amazonaws.com" }
+            Action: "sts:AssumeRole"
       Policies:
         - PolicyName: ReportWorkflowPermissions
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -375,23 +375,23 @@ Resources:
                   - logs:PutResourcePolicy
                   - logs:DescribeResourcePolicies
                   - logs:DescribeLogGroups
-                Resource: '*'
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                Resource: !Sub 'arn:aws:s3:::${SaaSReportBucket}/*'
+                Resource: { Fn::Sub: "arn:aws:s3:::${SaaSReportBucket}/*" }
               - Effect: Allow
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
-                Resource: !GetAtt SaaSAttendanceTable.Arn
+                Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
               - Effect: Allow
                 Action:
                   - kms:Decrypt
                   - kms:GenerateDataKey
-                Resource: !GetAtt DataKMSKey.Arn
+                Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   # ─── Step Functions Express Workflow ───
   ReportStateMachine:
@@ -408,14 +408,14 @@ Resources:
             Next: InitializeReportStatus
           InitializeReportStatus:
             Type: Task
-            Resource: !Sub 'arn:aws:states:::dynamodb:putItem'
+            Resource: { Fn::Sub: "arn:aws:states:::dynamodb:putItem" }
             Parameters:
-              TableName: !Ref SaaSAttendanceTable
+              TableName: { Ref: SaaSAttendanceTable }
               Item:
                 PK:
-                  S.$: '$.PK'
+                  S.$: "$.PK"
                 SK:
-                  S.$: '$.SK'
+                  S.$: "$.SK"
                 Status:
                   S: "PROCESSING"
             Next: GenerateReportFile
@@ -427,22 +427,22 @@ Resources:
             Next: WriteFileToS3
           WriteFileToS3:
             Type: Task
-            Resource: !Sub 'arn:aws:states:::aws-sdk:s3:putObject'
+            Resource: { Fn::Sub: "arn:aws:states:::aws-sdk:s3:putObject" }
             Parameters:
-              Bucket: !Ref SaaSReportBucket
-              Key.$: '$.fileDetails.S3Key'
+              Bucket: { Ref: SaaSReportBucket }
+              Key.$: "$.fileDetails.S3Key"
               Body: "Attendance Report Content Placeholder"
             Next: FinalizeReportStatus
           FinalizeReportStatus:
             Type: Task
-            Resource: !Sub 'arn:aws:states:::dynamodb:updateItem'
+            Resource: { Fn::Sub: "arn:aws:states:::dynamodb:updateItem" }
             Parameters:
-              TableName: !Ref SaaSAttendanceTable
+              TableName: { Ref: SaaSAttendanceTable }
               Key:
                 PK:
-                  S.$: '$.PK'
+                  S.$: "$.PK"
                 SK:
-                  S.$: '$.SK'
+                  S.$: "$.SK"
               UpdateExpression: "SET #status = :val, #file = :file"
               ExpressionAttributeNames:
                 "#status": "Status"
@@ -451,14 +451,14 @@ Resources:
                 ":val":
                   S: "COMPLETED"
                 ":file":
-                  S.$: '$.fileDetails.S3Key'
+                  S.$: "$.fileDetails.S3Key"
             End: true
-      Role: !GetAtt ReportWorkflowRole.Arn
+      Role: { Fn::GetAtt: [ReportWorkflowRole, Arn] }
       Type: EXPRESS
       # Logging:
       #   Destinations:
       #     - CloudWatchLogsLogGroup:
-      #         LogGroupArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/states/*'
+      #         LogGroupArn: { Fn::Sub: 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/states/*' }
       #   Level: ALL
 
   # ─── EventBridge Pipe Execution Role ───
@@ -466,16 +466,16 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: pipes.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
       Policies:
         - PolicyName: PipeExecutionPermissions
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -483,24 +483,24 @@ Resources:
                   - dynamodb:GetRecords
                   - dynamodb:GetShardIterator
                   - dynamodb:ListStreams
-                Resource: !GetAtt SaaSAttendanceTable.StreamArn
+                Resource: { Fn::GetAtt: [SaaSAttendanceTable, StreamArn] }
               - Effect: Allow
                 Action:
                   - events:PutEvents
-                Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+                Resource: { Fn::Sub: "arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default" }
 
   # ─── EventBridge Pipe: DynamoDB to EventBridge ───
   DdbToEventBridgePipe:
     Type: AWS::Pipes::Pipe
     Properties:
       Name: smart-attendance-ddb-stream-pipe
-      RoleArn: !GetAtt StreamPipeRole.Arn
-      Source: !GetAtt SaaSAttendanceTable.StreamArn
+      RoleArn: { Fn::GetAtt: [StreamPipeRole, Arn] }
+      Source: { Fn::GetAtt: [SaaSAttendanceTable, StreamArn] }
       SourceParameters:
         DynamoDBStreamParameters:
           StartingPosition: LATEST
           BatchSize: 1
-      Target: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+      Target: { Fn::Sub: "arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default" }
 
   # ─── Webhook Credentials Secret ───
   WebhookSecret:
@@ -508,7 +508,7 @@ Resources:
     Properties:
       Name: smart-attendance-webhook-credentials
       Description: API keys and validation tokens for webhooks
-      KmsKeyId: !Ref DataKMSKey
+      KmsKeyId: { Ref: DataKMSKey }
       GenerateSecretString:
         SecretStringTemplate: '{"PaymentWebhookSignatureKey": "placeholder-token"}'
         GenerateStringKey: "SessionKey"
@@ -517,7 +517,7 @@ Resources:
   SpaBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'smart-attendance-spa-hosting-${AWS::AccountId}'
+      BucketName: { Fn::Sub: "smart-attendance-spa-hosting-${AWS::AccountId}" }
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html
@@ -531,15 +531,15 @@ Resources:
   SpaBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref SpaBucket
+      Bucket: { Ref: SpaBucket }
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: PublicReadGetObject
             Effect: Allow
-            Principal: '*'
-            Action: 's3:GetObject'
-            Resource: !Sub 'arn:aws:s3:::${SpaBucket}/*'
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: { Fn::Sub: "arn:aws:s3:::${SpaBucket}/*" }
 
   # ─── Functions ───
   AuthFunction:
@@ -552,16 +552,16 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
-          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          COGNITO_CLIENT_ID: { Ref: CognitoUserPoolClient }
+          COGNITO_USER_POOL_ID: { Ref: CognitoUserPool }
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         LoginApi:
           Type: HttpApi
           Properties:
             Path: /auth/login
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
             Auth:
               Authorizer: NONE
         RegisterRequestApi:
@@ -569,7 +569,7 @@ Resources:
           Properties:
             Path: /auth/register/request
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
             Auth:
               Authorizer: NONE
         RegisterVerifyApi:
@@ -577,29 +577,29 @@ Resources:
           Properties:
             Path: /auth/register/verify
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
             Auth:
               Authorizer: NONE
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - cognito-idp:SignUp
                 - cognito-idp:ConfirmSignUp
                 - cognito-idp:InitiateAuth
-              Resource: !GetAtt CognitoUserPool.Arn
+              Resource: { Fn::GetAtt: [CognitoUserPool, Arn] }
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
                 - dynamodb:GetItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   CheckInFunction:
     Type: AWS::Serverless::Function
@@ -609,28 +609,28 @@ Resources:
       Runtime: nodejs18.x
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
-          # ORIGIN_VERIFY_SECRET: !Ref OriginVerifySecret
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
+          # ORIGIN_VERIFY_SECRET: { Ref: OriginVerifySecret }
       Events:
         CheckInApi:
           Type: HttpApi
           Properties:
             Path: /attendance/check-in
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   UpdateProfileFunction:
     Type: AWS::Serverless::Function
@@ -640,28 +640,28 @@ Resources:
       Runtime: nodejs18.x
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
-          # ORIGIN_VERIFY_SECRET: !Ref OriginVerifySecret
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
+          # ORIGIN_VERIFY_SECRET: { Ref: OriginVerifySecret }
       Events:
         UpdateApi:
           Type: HttpApi
           Properties:
             Path: /profile/update
             Method: patch
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:UpdateItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   ExportReportFunction:
     Type: AWS::Serverless::Function
@@ -672,31 +672,31 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
-          REPORT_BUCKET: !Ref SaaSReportBucket
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
+          REPORT_BUCKET: { Ref: SaaSReportBucket }
       Events:
         SQSTrigger:
           Type: SQS
           Properties:
-            Queue: !GetAtt ReportQueue.Arn
+            Queue: { Fn::GetAtt: [ReportQueue, Arn] }
             BatchSize: 1
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:Query
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - s3:PutObject
-              Resource: !Sub 'arn:aws:s3:::${SaaSReportBucket}/*'
+              Resource: { Fn::Sub: "arn:aws:s3:::${SaaSReportBucket}/*" }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   HelloWorldFunction:
     Type: AWS::Serverless::Function
@@ -707,22 +707,22 @@ Resources:
       Timeout: 10
       Tracing: Active
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
-              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*'
+              Resource: { Fn::Sub: "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*" }
       Environment:
         Variables:
-          ALLOWED_ORIGIN: !Ref AllowedOrigin
+          ALLOWED_ORIGIN: { Ref: AllowedOrigin }
       Events:
         HelloWorldAPI:
           Type: HttpApi
           Properties:
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
             Path: /hello
             Method: get
 
@@ -737,27 +737,27 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         CheckOutApi:
           Type: HttpApi
           Properties:
             Path: /attendance/check-out
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   # ─── Attendance History Lambda (Query & Summary) ───
   AttendanceHistoryFunction:
@@ -770,27 +770,27 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         HistoryApi:
           Type: HttpApi
           Properties:
             Path: /attendance/history
             Method: get
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:Query
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   AdminFunction:
     Type: AWS::Serverless::Function
@@ -802,65 +802,65 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
-          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
+          COGNITO_USER_POOL_ID: { Ref: CognitoUserPool }
       Events:
         AdminListApi:
           Type: HttpApi
           Properties:
             Path: /admin/users
             Method: get
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminUpdateApi:
           Type: HttpApi
           Properties:
             Path: /admin/users
             Method: patch
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminCreateUserApi:
           Type: HttpApi
           Properties:
             Path: /admin/users/create
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminUpdateUserProfileApi:
           Type: HttpApi
           Properties:
             Path: /admin/users/profile
             Method: patch
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminDeleteUserApi:
           Type: HttpApi
           Properties:
             Path: /admin/users/delete
             Method: delete
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminAttendanceSummaryApi:
           Type: HttpApi
           Properties:
             Path: /admin/attendance/summary
             Method: get
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminAttendanceApiPost:
           Type: HttpApi
           Properties:
             Path: /admin/attendance
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminAttendanceApiPatch:
           Type: HttpApi
           Properties:
             Path: /admin/attendance
             Method: patch
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         AdminAttendanceApiDelete:
           Type: HttpApi
           Properties:
             Path: /admin/attendance
             Method: delete
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
@@ -869,7 +869,7 @@ Resources:
                 - dynamodb:PutItem
                 - dynamodb:UpdateItem
                 - dynamodb:DeleteItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - cognito-idp:AdminCreateUser
@@ -878,13 +878,13 @@ Resources:
                 - cognito-idp:AdminUpdateUserAttributes
                 - cognito-idp:AdminDisableUser
                 - cognito-idp:AdminEnableUser
-              Resource: !GetAtt CognitoUserPool.Arn
+              Resource: { Fn::GetAtt: [CognitoUserPool, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   # ─── Excel Report Export API Lambda ───
   ExportReportApiFunction:
@@ -897,28 +897,28 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         ExportReportApi:
           Type: HttpApi
           Properties:
             Path: /attendance/export/{yearMonth}
             Method: get
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:Query
                 - dynamodb:GetItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   # ─── Subscription Lambda (B2B Billing) ───
   SubscriptionFunction:
@@ -931,34 +931,34 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         SubscriptionGetApi:
           Type: HttpApi
           Properties:
             Path: /billing/subscription
             Method: get
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
         SubscriptionPostApi:
           Type: HttpApi
           Properties:
             Path: /billing/create-payment
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
                 - dynamodb:GetItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
   # ─── Webhook Lambda (Inbound Payment — No Auth) ───
   WebhookFunction:
@@ -971,35 +971,35 @@ Resources:
       Tracing: Active
       Environment:
         Variables:
-          DYNAMODB_TABLE: !Ref SaaSAttendanceTable
+          DYNAMODB_TABLE: { Ref: SaaSAttendanceTable }
       Events:
         WebhookApi:
           Type: HttpApi
           Properties:
             Path: /billing/webhook
             Method: post
-            ApiId: !Ref AttendanceApi
+            ApiId: { Ref: AttendanceApi }
             Auth:
               Authorizer: NONE
       Policies:
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - dynamodb:UpdateItem
-              Resource: !GetAtt SaaSAttendanceTable.Arn
+              Resource: { Fn::GetAtt: [SaaSAttendanceTable, Arn] }
             - Effect: Allow
               Action:
                 - secretsmanager:GetSecretValue
-              Resource: !Ref WebhookSecret
+              Resource: { Ref: WebhookSecret }
             - Effect: Allow
               Action:
                 - kms:Decrypt
                 - kms:Encrypt
                 - kms:GenerateDataKey
-              Resource: !GetAtt DataKMSKey.Arn
+              Resource: { Fn::GetAtt: [DataKMSKey, Arn] }
 
 Outputs:
   AttendanceApiUrl:
     Description: "Link API Endpoint"
-    Value: !Sub "https://${AttendanceApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+    Value: { Fn::Sub: "https://${AttendanceApi}.execute-api.${AWS::Region}.amazonaws.com/prod" }
