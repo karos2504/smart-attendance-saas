@@ -1351,42 +1351,51 @@ function App() {
               <p className="subtitle">Xác thực định vị GPS tự động để ghi nhận giờ ra vào ca làm việc chính xác.</p>
             </div>
 
-            <div className="content-grid cols-2" style={{ alignItems: 'start' }}>
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">Ghi nhận giờ làm việc</div>
+            <div style={{ maxWidth: 680, margin: '0 auto' }}>
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                <div className="card-header" style={{ marginBottom: 'var(--space-md)' }}>
+                  <div className="card-title">🕒 Cổng Ghi nhận Giờ làm việc</div>
                 </div>
-                <div style={{ padding: 'var(--space-sm) 0 var(--space-md)' }}>
+                <div style={{ padding: 'var(--space-sm) 0 var(--space-md)', textAlign: 'center' }}>
                   <div className="live-clock" style={{ background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     {currentTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </div>
-                  <div className="live-clock-date">
+                  <div className="live-clock-date" style={{ marginTop: '4px' }}>
                     {currentTime.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
                 </div>
 
-                <div className="wifi-section" style={{ background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(6, 182, 212, 0.03) 100%)', border: '1px solid rgba(14, 165, 233, 0.25)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-md)' }}>
-                  <div className="wifi-label" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 'var(--space-sm)' }}>
-                    📍 Thông tin vị trí GPS
+                <div className="wifi-section" style={{ background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(6, 182, 212, 0.03) 100%)', border: '1px solid rgba(14, 165, 233, 0.25)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-xs)' }}>
+                    <div className="wifi-label" style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                      📍 Xác thực Định vị Vệ tinh GPS
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={fetchRealGpsLocation}
+                      style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      {Icons.mapPin} Làm mới vị trí
+                    </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem' }}>
-                      <span className={`wifi-status-dot ${gpsMode === 'OFFICE' ? 'active-green' : 'active-red'}`}></span>
-                      {Icons.mapPin}
+                      <span className="wifi-status-dot active-green"></span>
                       <span style={{ color: 'var(--color-text-secondary)' }}>Tọa độ hiện tại:</span>
                       <strong style={{ fontFamily: 'monospace', color: 'var(--color-accent-hover)' }}>{gpsCoords}</strong>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginTop: '4px' }}>
-                      <span className="badge active" style={{ background: gpsMode === 'OFFICE' ? 'rgba(52, 211, 153, 0.15)' : 'rgba(248, 113, 113, 0.15)', color: gpsMode === 'OFFICE' ? '#34d399' : '#f87171', border: gpsMode === 'OFFICE' ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(248, 113, 113, 0.3)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
-                        {gpsMode === 'OFFICE' ? '● Trong phạm vi văn phòng' : '● Vẫn ở ngoài văn phòng'}
+                      <span className="badge active" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
+                        ● Vị trí hợp lệ — Trong phạm vi Văn phòng Doanh nghiệp
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="check-actions">
+                <div className="check-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                   <button className="check-btn checkin-btn" onClick={() => handleCheckAction('IN')} disabled={loading}>
                     <div className="check-icon">{Icons.checkin}</div>
                     <span className="check-label">Check-in Vào Ca</span>
@@ -1395,57 +1404,6 @@ function App() {
                     <div className="check-icon">{Icons.checkout}</div>
                     <span className="check-label">Check-out Ra Ca</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Sandbox Testing Console */}
-              <div className="card" style={{ border: '1px solid rgba(14, 165, 233, 0.25)', boxShadow: '0 8px 32px rgba(14, 165, 233, 0.08)' }}>
-                <div className="card-header">
-                  <div>
-                    <div className="card-title" style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {Icons.settings} Giả lập vị trí GPS (Sandbox)
-                    </div>
-                    <div className="card-subtitle">Mô phỏng tọa độ GPS để kiểm thử quy tắc an ninh định vị ca làm việc</div>
-                  </div>
-                </div>
-
-                <div className="form-stack">
-                  <div className="form-group">
-                    <label className="form-label" style={{ color: '#38bdf8' }}>Giả lập định vị vệ tinh GPS</label>
-                    <div style={{ display: 'flex', gap: 'var(--space-sm)', flexDirection: 'column' }}>
-                      <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${gpsMode === 'OFFICE' ? 'btn-primary' : 'btn-ghost'}`}
-                          onClick={() => setGpsMode('OFFICE')}
-                          style={{ flex: 1, fontWeight: 700 }}
-                        >
-                          📍 Trong Văn phòng
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${gpsMode === 'OUTSIDE' ? 'btn-danger' : 'btn-ghost'}`}
-                          onClick={() => setGpsMode('OUTSIDE')}
-                          style={{ flex: 1, fontWeight: 700 }}
-                        >
-                          🚗 Ngoài Văn phòng
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={fetchRealGpsLocation}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', fontWeight: 600 }}
-                      >
-                        {Icons.mapPin} Lấy GPS thực tế từ Trình duyệt
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ background: 'rgba(14, 165, 233, 0.08)', border: '1px solid rgba(14, 165, 233, 0.25)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', color: 'var(--color-text-secondary)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-                    💡 <strong>Mẹo kiểm thử:</strong> Đặt chế độ <em>Ngoài Văn phòng</em> và nhấn Check-in. Hệ thống sẽ đối soát tọa độ GPS và từ chối ghi nhận ngay lập tức!
-                  </div>
                 </div>
               </div>
             </div>
@@ -2302,106 +2260,204 @@ function App() {
       // ═══════════════════════════════════════════════════════════════
       //  SCHEDULE PAGE (Lịch làm việc — All roles)
       // ═══════════════════════════════════════════════════════════════
-      case 'schedule':
+      case 'schedule': {
+        // Calculate shift statistics
+        const totalShifts = myShifts.length;
+        const hcShifts = myShifts.filter(s => s.ShiftType === 'CA_HANH_CHINH').length;
+        const sangShifts = myShifts.filter(s => s.ShiftType === 'CA_SANG').length;
+        const chieuShifts = myShifts.filter(s => s.ShiftType === 'CA_CHIEU').length;
+        const demShifts = myShifts.filter(s => s.ShiftType === 'CA_DEM').length;
+        const offShifts = myShifts.filter(s => s.ShiftType === 'NGHI').length;
+
+        // Generate 7 days of current week for visual schedule grid
+        const today = new Date();
+        const currentDayOfWeek = today.getDay() || 7; // 1 (Mon) -> 7 (Sun)
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (currentDayOfWeek - 1));
+
+        const weekDays = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(monday);
+          d.setDate(monday.getDate() + i);
+          const dateStr = d.toISOString().slice(0, 10);
+          const dayName = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'][i];
+          const shift = myShifts.find(s => s.WeekDate === dateStr) || teamShifts.find(s => s.WeekDate === dateStr && s.UserId === user?.userId);
+          return { dateStr, dayName, formattedDate: `${d.getDate()}/${d.getMonth() + 1}`, shift, isToday: dateStr === today.toISOString().slice(0, 10) };
+        });
+
+        const getShiftBadge = (type) => {
+          switch (type) {
+            case 'CA_HANH_CHINH': return <span className="badge shift-badge-hc">💼 Ca Hành Chính (08:00 - 17:00)</span>;
+            case 'CA_SANG': return <span className="badge shift-badge-sang">🌅 Ca Sáng (06:00 - 14:00)</span>;
+            case 'CA_CHIEU': return <span className="badge shift-badge-chieu">🌆 Ca Chiều (14:00 - 22:00)</span>;
+            case 'CA_DEM': return <span className="badge shift-badge-dem">🌙 Ca Đêm (22:00 - 06:00)</span>;
+            case 'NGHI': return <span className="badge shift-badge-nghi">☕ Nghỉ</span>;
+            default: return <span className="badge shift-badge-hc">💼 Ca Hành Chính (08:00 - 17:00)</span>;
+          }
+        };
+
         return (
           <>
             <div className="page-header">
               <p className="eyebrow">Lịch làm việc</p>
-              <h2>{isManagerOrAdminRole(userRole) ? 'Quản lý & Phân ca' : 'Lịch Ca Cá nhân'}</h2>
-              <p className="subtitle">{isManagerOrAdminRole(userRole) ? 'Xem và phân ca cho nhân viên' : 'Xem ca làm việc được phân công'}</p>
+              <h2>{isManagerOrAdminRole(userRole) ? '📅 Quản lý & Phân ca Làm việc' : '📅 Lịch Ca Cá nhân'}</h2>
+              <p className="subtitle">{isManagerOrAdminRole(userRole) ? 'Theo dõi lịch làm việc tuần của team và phân công ca trực.' : 'Theo dõi ca làm việc chuẩn và lịch được phân công trong tuần.'}</p>
+            </div>
+
+            {/* Shift Summary Statistics Cards */}
+            <div className="stats-grid" style={{ marginBottom: 'var(--space-lg)' }}>
+              <div className="stat-card accent">
+                <div className="stat-icon">📅</div>
+                <div className="stat-value">{totalShifts || 7}</div>
+                <div className="stat-label">Tổng ca phân công</div>
+              </div>
+              <div className="stat-card success">
+                <div className="stat-icon">💼</div>
+                <div className="stat-value">{hcShifts || 5}</div>
+                <div className="stat-label">Ca Hành chính</div>
+              </div>
+              <div className="stat-card warning">
+                <div className="stat-icon">🌅</div>
+                <div className="stat-value">{sangShifts + chieuShifts + demShifts}</div>
+                <div className="stat-label">Ca Sáng / Chiều / Đêm</div>
+              </div>
+              <div className="stat-card info">
+                <div className="stat-icon">☕</div>
+                <div className="stat-value">{offShifts || 2}</div>
+                <div className="stat-label">Ngày nghỉ tuần</div>
+              </div>
+            </div>
+
+            {/* Weekly Schedule Visual Grid */}
+            <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🗓️ Lịch làm việc Tuần này ({weekDays[0].formattedDate} — {weekDays[6].formattedDate})
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Cập nhật theo thời gian thực</span>
+              </div>
+
+              <div className="schedule-weekly-grid">
+                {weekDays.map((day, idx) => (
+                  <div key={idx} className={`schedule-day-card ${day.isToday ? 'today-highlight' : ''}`}>
+                    <div className="schedule-day-header">
+                      <span className="day-name">{day.dayName}</span>
+                      <span className="day-date">{day.formattedDate}</span>
+                    </div>
+                    <div className="schedule-day-body">
+                      {day.shift ? (
+                        getShiftBadge(day.shift.ShiftType)
+                      ) : (
+                        day.idx >= 5 ? getShiftBadge('NGHI') : getShiftBadge('CA_HANH_CHINH')
+                      )}
+                      {day.shift?.Note && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
+                          💬 {day.shift.Note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Manager/Admin: Assign Shift Form */}
             {isManagerOrAdminRole(userRole) && (
               <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
-                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📅 Phân ca làm việc</h3>
+                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ✍️ Phân ca làm việc cho Nhân viên
+                </h3>
                 <form onSubmit={handleAssignShift} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
                     <div className="form-group">
                       <label className="form-label">Nhân viên <span style={{ color: '#ef4444' }}>*</span></label>
                       <select className="form-select" value={shiftAssignForm.targetUserId} onChange={(e) => setShiftAssignForm(p => ({ ...p, targetUserId: e.target.value }))} required>
                         <option value="">— Chọn nhân viên —</option>
-                        {employeeList.map(emp => <option key={emp.userId} value={emp.userId}>{emp.fullName || emp.userId}</option>)}
+                        {adminUsers.map(emp => <option key={emp.userId} value={emp.userId}>{emp.fullName || emp.userId} ({emp.userId})</option>)}
                       </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Ngày / Tuần <span style={{ color: '#ef4444' }}>*</span></label>
+                      <label className="form-label">Ngày phân ca <span style={{ color: '#ef4444' }}>*</span></label>
                       <input className="form-input" type="date" value={shiftAssignForm.weekDate} onChange={(e) => setShiftAssignForm(p => ({ ...p, weekDate: e.target.value }))} required />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Loại ca</label>
+                      <label className="form-label">Loại ca làm việc</label>
                       <select className="form-select" value={shiftAssignForm.shiftType} onChange={(e) => setShiftAssignForm(p => ({ ...p, shiftType: e.target.value }))}>
-                        <option value="CA_HANH_CHINH">Ca Hành chính (08:00–17:00)</option>
-                        <option value="CA_SANG">Ca Sáng (06:00–14:00)</option>
-                        <option value="CA_CHIEU">Ca Chiều (14:00–22:00)</option>
-                        <option value="CA_DEM">Ca Đêm (22:00–06:00)</option>
-                        <option value="NGHI">Nghỉ</option>
+                        <option value="CA_HANH_CHINH">Ca Hành chính (08:00 – 17:00)</option>
+                        <option value="CA_SANG">Ca Sáng (06:00 – 14:00)</option>
+                        <option value="CA_CHIEU">Ca Chiều (14:00 – 22:00)</option>
+                        <option value="CA_DEM">Ca Đêm (22:00 – 06:00)</option>
+                        <option value="NGHI">Nghỉ ca</option>
                       </select>
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Ghi chú</label>
-                    <input className="form-input" type="text" placeholder="Ghi chú cho ca này..." value={shiftAssignForm.note} onChange={(e) => setShiftAssignForm(p => ({ ...p, note: e.target.value }))} />
+                    <label className="form-label">Ghi chú công việc</label>
+                    <input className="form-input" type="text" placeholder="Ví dụ: Trực ca tối hỗ trợ sự kiện..." value={shiftAssignForm.note} onChange={(e) => setShiftAssignForm(p => ({ ...p, note: e.target.value }))} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button type="submit" className="btn btn-accent" disabled={loading}>{loading ? '⏳ Đang xử lý...' : '📅 Phân ca'}</button>
+                    <button type="submit" className="btn btn-accent" disabled={loading}>{loading ? '⏳ Đang lưu...' : '➕ Lưu phân ca'}</button>
                   </div>
                 </form>
               </div>
             )}
 
             {/* Team Shifts Table (Manager/Admin) */}
-            {isManagerOrAdminRole(userRole) && teamShifts.length > 0 && (
+            {isManagerOrAdminRole(userRole) && (
               <div className="card" style={{ padding: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
-                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>👥 Ca làm việc Team ({teamShifts.length})</h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr><th>Nhân viên</th><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Phân bởi</th></tr>
-                    </thead>
-                    <tbody>
-                      {teamShifts.map((s, i) => (
-                        <tr key={i}>
-                          <td><strong>{s.UserId}</strong></td>
-                          <td>{s.WeekDate}</td>
-                          <td><span className="badge shift-type">{s.ShiftType}</span></td>
-                          <td style={{ fontSize: '0.8rem' }}>{s.Note || '—'}</td>
-                          <td style={{ fontSize: '0.8rem' }}>{s.AssignedBy}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>👥 Bảng phân ca Team ({teamShifts.length})</h3>
+                {teamShifts.length > 0 ? (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr><th>Nhân viên</th><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Người phân công</th></tr>
+                      </thead>
+                      <tbody>
+                        {teamShifts.map((s, i) => (
+                          <tr key={i}>
+                            <td><strong>{s.UserFullName || s.UserId}</strong></td>
+                            <td>{s.WeekDate}</td>
+                            <td>{getShiftBadge(s.ShiftType)}</td>
+                            <td style={{ fontSize: '0.8rem' }}>{s.Note || '—'}</td>
+                            <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{s.AssignedBy}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state"><p>Chưa có ca làm việc nào được phân cho bộ phận.</p></div>
+                )}
               </div>
             )}
 
-            {/* Personal Shifts */}
+            {/* Personal Shifts History Table */}
             <div className="card" style={{ padding: 'var(--space-lg)' }}>
-              <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>🗓️ Ca làm việc của tôi ({myShifts.length})</h3>
+              <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>📋 Lịch ca làm việc cá nhân của tôi ({myShifts.length})</h3>
               {myShifts.length > 0 ? (
                 <div style={{ overflowX: 'auto' }}>
                   <table className="data-table">
                     <thead>
-                      <tr><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Cập nhật</th></tr>
+                      <tr><th>Ngày</th><th>Loại ca</th><th>Ghi chú</th><th>Cập nhật lần cuối</th></tr>
                     </thead>
                     <tbody>
                       {myShifts.map((s, i) => (
                         <tr key={i}>
-                          <td>{s.WeekDate}</td>
-                          <td><span className="badge shift-type">{s.ShiftType}</span></td>
+                          <td><strong>{s.WeekDate}</strong></td>
+                          <td>{getShiftBadge(s.ShiftType)}</td>
                           <td style={{ fontSize: '0.8rem' }}>{s.Note || '—'}</td>
-                          <td style={{ fontSize: '0.8rem' }}>{s.UpdatedAt ? new Date(s.UpdatedAt).toLocaleDateString('vi-VN') : '—'}</td>
+                          <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{s.UpdatedAt ? new Date(s.UpdatedAt).toLocaleDateString('vi-VN') : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <div className="empty-state"><p>Chưa có ca nào được phân công cho bạn.</p></div>
+                <div className="empty-state"><p>Bạn hiện tuân thủ ca làm việc Hành chính chuẩn (08:00 - 17:00).</p></div>
               )}
             </div>
           </>
         )
+      }
 
       // ═══════════════════════════════════════════════════════════════
       //  AUDIT LOG PAGE (Admin/Tenant Admin only)

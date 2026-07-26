@@ -1819,6 +1819,108 @@
   border-radius: var(--radius-full);
 }
 
+.schedule-weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-md);
+}
+
+.schedule-day-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: all var(--transition-fast) ease;
+}
+
+.schedule-day-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.schedule-day-card.today-highlight {
+  border-color: var(--color-accent);
+  background: rgba(14, 165, 233, 0.08);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.2);
+}
+
+.schedule-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding-bottom: var(--space-xs);
+}
+
+.day-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.day-date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.shift-badge-hc {
+  background: rgba(14, 165, 233, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  font-size: 0.75rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  padding: 6px 8px;
+}
+
+.shift-badge-sang {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.75rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  padding: 6px 8px;
+}
+
+.shift-badge-chieu {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  font-size: 0.75rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  padding: 6px 8px;
+}
+
+.shift-badge-dem {
+  background: rgba(99, 102, 241, 0.18);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  font-size: 0.75rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  padding: 6px 8px;
+}
+
+.shift-badge-nghi {
+  background: rgba(100, 116, 139, 0.18);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  font-size: 0.75rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  padding: 6px 8px;
+}
+
 /* ─── Audit Log ─── */
 .admin-role { background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); }
 .manager-role { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
